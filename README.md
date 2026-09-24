@@ -17,6 +17,7 @@ AI-powered resume screening API that analyzes resume-JD fit using Google Gemini 
 - **AI Screening** — Gemini LLM-powered contextual analysis with scoring, skill matching, experience assessment, and recommendations
 - **File Upload** — Upload resume and JD as PDF, DOCX, or TXT via REST endpoints
 - **CLI Mode** — Run screening directly from terminal with a single command — no curl or Postman needed
+- **Batch Screening** — Screen an entire directory of resumes against one JD, with per-candidate results and a ranked summary report
 - **Downloadable Results** — Returns screening results as a downloadable `.txt` file
 
 ## Setup
@@ -34,26 +35,49 @@ AI-powered resume screening API that analyzes resume-JD fit using Google Gemini 
 Run screening directly from terminal — no server needed, no curl commands:
 
 ```bash
-java -jar target/resume-screener-0.0.1-SNAPSHOT.jar <mode> <resume_path> <jd_path> <output_path>
+java -jar target/resume-screener-0.0.1-SNAPSHOT.jar <mode> -resumePath <path> -JDPath <path> -outputPath <path>
 ```
 
-| Argument      | Description                                         |
-|---------------|-----------------------------------------------------|
-| `mode`        | `keyword` (fast matching) or `ai` (Gemini-powered)  |
-| `resume_path` | Path to resume file (PDF, DOCX, or TXT)             |
-| `jd_path`     | Path to job description file                        |
-| `output_path` | Path where the result file will be saved            |
+| Flag            | Description                                                        |
+|-----------------|--------------------------------------------------------------------|
+| `mode`          | `keyword` (fast matching) or `ai` (Gemini-powered)                 |
+| `-resumePath`   | Path to a single resume file **or a directory** of resumes         |
+| `-JDPath`       | Path to the job description file                                   |
+| `-outputPath`   | Single mode: path for result file / Batch mode: directory for results |
 
-**Examples:**
+#### Single Resume
 ```bash
-# Keyword screening
-java -jar target/resume-screener-0.0.1-SNAPSHOT.jar keyword ~/resume.pdf ~/jd.txt ~/result.txt
-
-# AI screening
-java -jar target/resume-screener-0.0.1-SNAPSHOT.jar ai ~/resume.pdf ~/jd.txt ~/result.txt
+java -jar target/resume-screener-0.0.1-SNAPSHOT.jar keyword \
+  -resumePath ~/resume.pdf \
+  -JDPath ~/jd.txt \
+  -outputPath ~/result.txt
 ```
 
-When run with no arguments, the app starts as a normal web server.
+#### Batch Screening (Directory of Resumes)
+
+Point `-resumePath` to a folder containing multiple resumes. The screener processes every supported file in the directory, generates an individual result for each candidate, and produces a **SUMMARY_RANKING.txt** that ranks all candidates by score (highest first).
+
+Works the same way even if the folder contains only one resume.
+
+```bash
+java -jar target/resume-screener-0.0.1-SNAPSHOT.jar keyword \
+  -resumePath ~/resumes/ \
+  -JDPath ~/jd.txt \
+  -outputPath ~/results/
+```
+
+**What gets created:**
+```
+~/results/
+├── result_resume_priya_sharma.txt      # Individual detailed result
+├── result_resume_rahul_verma.txt
+├── result_resume_amit_patel.txt
+├── result_resume_sneha_reddy.txt
+├── result_resume_vikram_singh.txt
+└── SUMMARY_RANKING.txt                 # Ranked summary of all candidates
+```
+
+**Supported formats:** PDF, DOCX, TXT, CSV
 
 ### REST API
 
@@ -160,6 +184,29 @@ Interview Tips:
 - Discuss experience with distributed caching
 - Test knowledge of CI/CD pipeline design
 ========================================
+```
+
+### Batch Screening — Summary Ranking
+```
+========================================================
+         RESUME SCREENING - CANDIDATE RANKING
+========================================================
+  Mode           : KEYWORD
+  Total Resumes  : 5
+  Processed      : 5
+========================================================
+
+RANK   CANDIDATE                      SCORE    RECOMMENDATION
+─────────────────────────────────────────────────────────────────
+1      Sneha Reddy                    88%      STRONG MATCH
+2      Priya Sharma                   75%      STRONG MATCH
+3      Amit Patel                     52%      MODERATE MATCH
+4      Vikram Singh                   28%      WEAK MATCH
+5      Rahul Verma                    12%      NO MATCH
+─────────────────────────────────────────────────────────────────
+
+Individual detailed results are in the output directory.
+========================================================
 ```
 
 ## Project Structure
