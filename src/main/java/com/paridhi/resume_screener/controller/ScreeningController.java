@@ -35,16 +35,23 @@ public class ScreeningController {
                     request.getResumeText(),
                     request.getJobDescription()
             );
+            System.out.println("=== GEMINI RAW RESPONSE ===");
+            System.out.println(rawResponse);
+            System.out.println("=== END RESPONSE ===");
 
             // Parse Gemini response
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(rawResponse);
-            String aiText = root.path("candidates").get(0)
-                    .path("content").path("parts").get(0)
-                    .path("text").asText();
 
-            // Clean up — remove markdown code blocks if present
-            aiText = aiText.replace("```json", "").replace("```", "").trim();
+            JsonNode candidates = root.path("candidates");
+            if (!candidates.isArray() || candidates.isEmpty()) {
+                throw new RuntimeException("Gemini returned no candidates: " + rawResponse);
+            }
+            JsonNode parts = candidates.get(0).path("content").path("parts");
+            if (!parts.isArray() || parts.isEmpty()) {
+                throw new RuntimeException("Gemini returned no parts: " + rawResponse);
+            }
+            String aiText = parts.get(0).path("text").asText();
 
             JsonNode aiJson = mapper.readTree(aiText);
 
@@ -60,7 +67,16 @@ public class ScreeningController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+            AIScreeningResponse errorResponse = AIScreeningResponse.builder()
+                    .overallScore(0)
+                    .feedback("Error: " + e.getMessage())
+                    .matchedSkills("")
+                    .missingSkills("")
+                    .experienceMatch("")
+                    .recommendation("ERROR")
+                    .interviewTips("")
+                    .build();
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
 
